@@ -1,0 +1,190 @@
+#!/bin/bash
+#Variables
+USERID=$(id -u)
+
+#Stage 1
+
+if [ "${USERID}" -ne 0 ]; then
+        echo -e "Correr con usuario root"
+        exit
+
+fi
+
+
+#######Usuario_Verificado#######
+
+echo "Actualizacion en progreso"
+apt-get update
+
+sleep 3
+echo "Actualizacion completa"
+
+
+
+echo "Procediendo a verificar y instalar paquetes"
+
+#apache
+if dpkg -l | grep -q "apache2";
+then
+        echo "Paquete apache2 instalado"
+else
+        echo "Instalando paquete apache2"
+        sudo apt  install apache2 -y
+
+fi
+
+
+#MariaDB
+if   dpkg -l | grep -q "mariadb-server";
+then
+        echo "Paquete  mariadb instalado"
+else
+
+        echo "Instalando paquete mariadb"
+        apt install mariadb-server -y
+
+fi
+
+
+#Configuracion de MariaDB
+
+echo "Procediendo a configurar la base de datos"
+mysql -e "CREATE DATABASE devopstravel;
+CREATE USER 'codeuser'@'localhost' IDENTIFIED BY 'codepass';
+GRANT ALL PRIVILEGES ON *.* TO 'codeuser'@'localhost';
+FLUSH PRIVILEGES;"
+
+
+#Git
+if ! dpkg -l | grep -q "git";
+then
+        echo "Instalando git"
+        apt install git -y
+
+fi
+
+#PHP
+if ! dpkg -l | grep -q "php";
+then
+        echo "Instalando php"
+        sudo apt install php -y
+        echo "Instalando paquetes php-mysql"
+        sudo apt install php-mysql php-xml php-gd php-mbstring php-bcmath -y
+
+fi
+
+#Curl
+if ! dpkg -l | grep -q "curl";
+then 
+        echo "Paquete curl instalado"
+else 
+        echo "Instalando paquete curl"
+        apt install curl -y
+fi
+
+sleep 2
+###Paquetes Verificados y Habilitados###
+
+echo "Procediendo a habilitar paquetes"
+
+#Apache
+sudo systemctl start apache2
+sudo systemctl enable apache2
+
+
+
+#MariaDB
+sudo systemctl start mariadb
+sudo systemctl enable mariadb
+
+
+#Php
+php -v
+
+
+echo "Los paquetes han sido habilitados"
+
+
+
+echo "=================================================="
+
+
+
+
+# Configuracion del archivo config.php
+config_file="config.php"
+
+# Contenido a agregar al archivo
+config_content="<?php
+\$dbHost     = \"localhost\";
+\$dbUsername = \"codeuser\";
+\$dbPassword = \"codepass\";
+\$dbName     = \"devopstravel\";
+\$conn = new mysqli(\$dbHost, \$dbUsername, \$dbPassword, \$dbName);
+if (\$conn->connect_error) {
+die(\"Connection failed: \" . \$conn->connect_error);
+}
+?>"
+
+# Guarda el contenido en el archivo
+echo "$config_content" > "$config_file"
+
+# Verificar si la operación fue exitosa
+if [ $? -eq 0 ]; then
+        echo "Archivo $config_file actualizado correctamente"
+else
+        echo "Error al actualizar el archivo $config_file"
+fi
+
+
+
+echo "================================"
+
+#Stage2/3
+
+#Actualizar cambios
+sudo systemctl reload apache2
+##STAGE_TWO##
+
+echo "Verificando repositorio"
+repo="clase2-linux-bash --single-branch https://github.com/roxsross/bootcamp-devops-2023.git"
+rama="clase2-linux-bash"
+
+
+if [ -d "$repo" ]; 
+then
+	echo "El repositorio previamente fue clonado"
+	git pull origin "$rama"
+else
+	echo "Procediendo a clonar repositorio"
+	git clone -b clase2-linux-bash --single-branch https://github.com/roxsross/bootcamp-devops-2023.git
+	git checkout clase-2-linux-bash
+	
+fi
+
+
+#Renombrando#
+mv /var/www/html/index.html /var/www/html/index.html.bkp
+
+## Testeando el codigo#
+cd bootcamp-devops-2023
+echo "Testeando el codigo"
+
+if [ -d "/app-295devops-travel" ];
+then
+	echo "El codigo del app ya existe"
+else
+	echo "Procediendo a copiar el codigo del app"
+	cp -r app-295devops-travel/* /var/www/html
+fi
+
+
+#Comprobando#
+echo "Comprobando"
+
+sudo systemctl reload apache2
+curl localhost/info.php
+
+
+echo "==================================================================="
+
