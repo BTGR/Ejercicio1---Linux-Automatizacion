@@ -9,7 +9,7 @@ Esta divido en las siguientes Stages:
   Se procede a clonar repositorio.
   Renombrar /var/www/html.
   Testear existencia y compatibilidad del codigo de la aplicacion.
-  Deploy.
+  Deploy
 
   
   
